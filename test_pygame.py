@@ -29,7 +29,7 @@ light_ip = "192.168.1.89" #dev
 
 lampada_a_piscar = False
 
-# light = wizlight(light_ip)
+light = wizlight(light_ip)
 lampada_process = None
 
 buttons = []
@@ -109,7 +109,8 @@ async def acender_lampada_main():
 def acender_lampada():
     if lampada_a_piscar:
         parar_lampada_a_piscar()
-    loop = asyncio.get_event_loop()
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     loop.run_until_complete(acender_lampada_main())
 
 async def apagar_lampada_main():
@@ -118,9 +119,8 @@ async def apagar_lampada_main():
     await light.turn_off()
 
 def apagar_lampada():
-    if lampada_a_piscar:
-        parar_lampada_a_piscar()
-    loop = asyncio.get_event_loop()
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     loop.run_until_complete(apagar_lampada_main())
 
 def parar_lampada_a_piscar():
@@ -134,13 +134,14 @@ async def piscar_lampada_main():
     global light
     # await asyncio.sleep(2)
     await light.turn_off()
-    time.sleep(random.randint(1, 10) * 0.01)
+    asyncio.sleep(random.randint(1, 10) * 0.01)
     await light.turn_on(PilotBuilder(brightness = 255))
-    time.sleep(random.randint(1, 10) * 0.01) 
+    asyncio.sleep(random.randint(1, 10) * 0.01) 
 
 def piscar_lampada(n_flickers=10):
     global lampada_a_piscar
-    loop = asyncio.get_event_loop()
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     for i in range(n_flickers):
         print(i)
         loop.run_until_complete(piscar_lampada_main())
@@ -155,8 +156,6 @@ def call_piscar_lampada_with_subprocess(n_flickers=10):
     lampada_process.start()
 
 def parar_terramoto():
-    # global lampada_a_piscar
-    # if lampada_a_piscar:
     pygame.mixer.music.pause()
     parar_lampada_a_piscar()
 
