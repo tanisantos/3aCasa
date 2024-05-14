@@ -5,7 +5,6 @@ import asyncio
 import time
 import random
 import sys
-import pygame
 from multiprocessing import Process
 
 from pywizlight import wizlight, PilotBuilder, discovery
@@ -25,9 +24,12 @@ green = (0,200,0)
 bright_red = (255,0,0)
 bright_green = (0,255,0) 
 
+# light_ip = "192.168.1.4" #prod
+light_ip = "192.168.1.89" #dev
+
 lampada_a_piscar = False
 
-light = wizlight("192.168.1.4")
+light = wizlight(light_ip)
 loop = asyncio.get_event_loop()
 lampada_process = None
 
@@ -92,7 +94,7 @@ def acender_lampada():
 
 async def apagar_lampada_main():
     global light
-    light.turn_off()
+    await light.turn_off()
 
 def apagar_lampada():
     global loop
@@ -137,7 +139,7 @@ def parar_terramoto():
         parar_lampada_a_piscar()
 
 def poder():
-    call_piscar_lampada_with_subprocess(n_flickers=100)
+    call_piscar_lampada_with_subprocess(n_flickers=8)
 
 def terramoto():
     pygame.mixer.music.load('audio/earthquake.mp3')

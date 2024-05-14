@@ -17,7 +17,7 @@ async def main():
         # await bulb.turn_off()
 
     # Set up a standard light
-    light = wizlight("192.168.1.89")
+    light = wizlight(bulbs[0].ip)
 
     await light.turn_on(PilotBuilder(brightness = 255))
 
