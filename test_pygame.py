@@ -103,6 +103,7 @@ def game_intro():
 
 async def acender_lampada_main():
     global light
+    print("acende")
     # await asyncio.sleep(2)
     await light.turn_on(PilotBuilder(brightness = 255))
 
@@ -115,6 +116,7 @@ def acender_lampada():
 
 async def apagar_lampada_main():
     global light
+    print("apaga")
     # await asyncio.sleep(2)
     await light.turn_off()
 
@@ -156,24 +158,29 @@ def call_piscar_lampada_with_subprocess(n_flickers=10):
     lampada_process.start()
 
 def parar_terramoto():
-    pygame.mixer.music.pause()
+    # fadeout time is in milliseconds
+    pygame.mixer.music.fadeout(3000)
     parar_lampada_a_piscar()
 
 def poder():
     call_piscar_lampada_with_subprocess(n_flickers=8)
 
 def terramoto():
-    print("clicou terramoto")
     pygame.mixer.music.load('audio/earthquake.mp3')
     pygame.mixer.music.play(-1)
-    call_piscar_lampada_with_subprocess(n_flickers=100)    
+    call_piscar_lampada_with_subprocess(n_flickers=100)
+
+def explosao():
+    explosao = pygame.mixer.Sound('audio/explosion.mp3')   
+    explosao.play() 
 
 if __name__ == "__main__":
     buttons.append(Button("PODER!", 200, 300, 200, 50, rosa_escuro, black, poder))   
     buttons.append(Button("Acender lâmpada", 200, 300+75, 200, 50, rosa_escuro, black, acender_lampada))
     buttons.append(Button("Apagar lâmpada", 200, 375+75, 200, 50, rosa_escuro, black, apagar_lampada))
     buttons.append(Button("TERRAMOTO!!!", 200+200+50, 300, 200, 50, rosa_escuro, black, terramoto))
-    buttons.append(Button("Parar terramoto", 200+200+50, 300+75, 200, 50, rosa_escuro, black, parar_terramoto))
+    buttons.append(Button("Explosão", 200+200+50, 300+75, 200, 50, rosa_escuro, black, explosao))
+    buttons.append(Button("Parar terramoto", 200+200+50, 375+75, 200, 50, rosa_escuro, black, parar_terramoto))
     pygame.init() 
     gameDisplay = pygame.display.set_mode((display_width,display_height))
     pygame.display.set_caption('A Terça Casa') 
