@@ -7,7 +7,7 @@ import random
 import sys
 from multiprocessing import Process
 
-# from pywizlight import wizlight, PilotBuilder, discovery
+from pywizlight import wizlight, PilotBuilder, discovery
  
 display_width = 900
 display_height = 600
