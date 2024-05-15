@@ -24,8 +24,8 @@ green = (0,200,0)
 bright_red = (255,0,0)
 bright_green = (0,255,0) 
 
-# light_ip = "192.168.1.4" #prod
-light_ip = "192.168.1.89" #dev
+light_ip = "192.168.1.4" #prod
+#light_ip = "192.168.1.89" #dev
 
 lampada_a_piscar = False
 
@@ -33,6 +33,8 @@ light = wizlight(light_ip)
 lampada_process = None
 
 buttons = []
+
+random.seed(42)
 
 def text_objects(text, font, color=white):
     textSurface = font.render(text, True, color)
@@ -104,25 +106,21 @@ def game_intro():
 async def acender_lampada_main():
     global light
     print("acende")
-    # await asyncio.sleep(2)
     await light.turn_on(PilotBuilder(brightness = 255))
 
 def acender_lampada():
     if lampada_a_piscar:
         parar_lampada_a_piscar()
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
+    loop = asyncio.get_event_loop()
     loop.run_until_complete(acender_lampada_main())
 
 async def apagar_lampada_main():
     global light
     print("apaga")
-    # await asyncio.sleep(2)
     await light.turn_off()
 
 def apagar_lampada():
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
+    loop = asyncio.get_event_loop()
     loop.run_until_complete(apagar_lampada_main())
 
 def parar_lampada_a_piscar():
@@ -134,16 +132,13 @@ def parar_lampada_a_piscar():
 
 async def piscar_lampada_main():
     global light
-    # await asyncio.sleep(2)
     await light.turn_off()
-    asyncio.sleep(random.randint(1, 10) * 0.01)
+    await asyncio.sleep(random.randint(1, 10) * 0.01)
     await light.turn_on(PilotBuilder(brightness = 255))
-    asyncio.sleep(random.randint(1, 10) * 0.01) 
+    await asyncio.sleep(random.randint(1, 10) * 0.01) 
 
 def piscar_lampada(n_flickers=10):
-    global lampada_a_piscar
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
+    loop = asyncio.get_event_loop()
     for i in range(n_flickers):
         print(i)
         loop.run_until_complete(piscar_lampada_main())
