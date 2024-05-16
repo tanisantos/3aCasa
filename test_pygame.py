@@ -9,8 +9,8 @@ from multiprocessing import Process
 
 from pywizlight import wizlight, PilotBuilder, discovery
  
-display_width = 900
-display_height = 600
+display_width = 1090
+display_height = display_width // 3 * 2
  
 black = (0,0,0)
 white = (255,255,255)
@@ -73,7 +73,8 @@ class Button:
             
         else:
             pygame.draw.rect(gameDisplay, self.ic,(self.x, self.y, self.w, self.h))
-        smallText = pygame.font.SysFont("lucidafax", 20)
+        text_size = display_width // 30
+        smallText = pygame.font.SysFont("lucidafax", text_size)
         textSurf, textRect = text_objects(self.msg, smallText)
         textRect.center = ( (self.x+(self.w/2)), (self.y+(self.h/2)) )
         gameDisplay.blit(textSurf, textRect)        
@@ -93,9 +94,10 @@ def game_intro():
                 quit()
                 
         gameDisplay.fill(rosa_claro)
-        largeText = pygame.font.SysFont("portugalbolditalic",115)
+        largetext_size = display_width // 8
+        largeText = pygame.font.SysFont("portugalbolditalic", largetext_size)
         TextSurf, TextRect = text_objects("A Terça Casa", largeText, rosa_escuro)
-        TextRect.center = ((display_width/2), (display_height/2) - 100)
+        TextRect.center = ((display_width/2), (display_height/2) - display_width // 6)
         gameDisplay.blit(TextSurf, TextRect)
 
         for button in buttons:
@@ -106,11 +108,11 @@ def game_intro():
 async def acender_lampada_main():
     global light
     print("acende")
-    await light.turn_on(PilotBuilder(brightness = 255))
+    await light.turn_on(PilotBuilder(rgb = (255, 255, 255), brightness = 255))
 
 def acender_lampada():
     if lampada_a_piscar:
-        parar_lampada_a_piscar()
+        parar_terramoto()
     loop = asyncio.get_event_loop()
     loop.run_until_complete(acender_lampada_main())
 
@@ -120,6 +122,8 @@ async def apagar_lampada_main():
     await light.turn_off()
 
 def apagar_lampada():
+    if lampada_a_piscar:
+        parar_terramoto()
     loop = asyncio.get_event_loop()
     loop.run_until_complete(apagar_lampada_main())
 
@@ -133,9 +137,9 @@ def parar_lampada_a_piscar():
 async def piscar_lampada_main():
     global light
     await light.turn_off()
-    await asyncio.sleep(random.randint(1, 10) * 0.01)
-    await light.turn_on(PilotBuilder(brightness = 255))
-    await asyncio.sleep(random.randint(1, 10) * 0.01) 
+    await asyncio.sleep(random.randint(1, 6) * 0.01)
+    await light.turn_on(PilotBuilder(brightness = 100))
+    await asyncio.sleep(random.randint(1, 8) * 0.01) 
 
 def piscar_lampada(n_flickers=10):
     loop = asyncio.get_event_loop()
@@ -163,19 +167,52 @@ def poder():
 def terramoto():
     pygame.mixer.music.load('audio/earthquake.mp3')
     pygame.mixer.music.play(-1)
-    call_piscar_lampada_with_subprocess(n_flickers=100)
+    call_piscar_lampada_with_subprocess(n_flickers=300)
 
 def explosao():
     explosao = pygame.mixer.Sound('audio/explosion.mp3')   
     explosao.play() 
 
+async def pressentimento_main():
+    global light
+    await light.turn_on(PilotBuilder(brightness = 100))
+
+def pressentimento():
+    if lampada_a_piscar:
+        parar_terramoto()
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(pressentimento_main())
+
+async def party_main():
+    global light
+    await light.turn_on(PilotBuilder(scene = 4))
+
+def party():
+    if lampada_a_piscar:
+        parar_terramoto()
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(party_main())
+
 if __name__ == "__main__":
-    buttons.append(Button("PODER!", 200, 300, 200, 50, rosa_escuro, black, poder))   
-    buttons.append(Button("Acender lâmpada", 200, 300+75, 200, 50, rosa_escuro, black, acender_lampada))
-    buttons.append(Button("Apagar lâmpada", 200, 375+75, 200, 50, rosa_escuro, black, apagar_lampada))
-    buttons.append(Button("TERRAMOTO!!!", 200+200+50, 300, 200, 50, rosa_escuro, black, terramoto))
-    buttons.append(Button("Explosão", 200+200+50, 300+75, 200, 50, rosa_escuro, black, explosao))
-    buttons.append(Button("Parar terramoto", 200+200+50, 375+75, 200, 50, rosa_escuro, black, parar_terramoto))
+    button_height = display_height // 13
+    button_width = display_width // 4
+    button_y = display_height // 5 * 2
+    button_margin = button_height // 3 * 2
+    left_column_x = display_width // 2 - button_width - button_margin
+    right_column_x = display_width // 2 + button_margin
+    print(left_column_x, button_y)
+    buttons.append(Button("PODER!", left_column_x, button_y, button_width, button_height, rosa_escuro, black, poder))   
+    buttons.append(Button("TERRAMOTO!!!", right_column_x, button_y, button_width, button_height, rosa_escuro, black, terramoto))
+    button_y += button_margin + button_height
+    buttons.append(Button("Acender lâmpada", left_column_x, button_y, button_width, button_height, rosa_escuro, black, acender_lampada))
+    buttons.append(Button("Explosão", right_column_x, button_y, button_width, button_height, rosa_escuro, black, explosao))
+    button_y += button_margin + button_height
+    buttons.append(Button("Apagar lâmpada", left_column_x, button_y, button_width, button_height, rosa_escuro, black, apagar_lampada))
+    buttons.append(Button("Parar terramoto", right_column_x, button_y, button_width, button_height, rosa_escuro, black, parar_terramoto))
+    button_y += button_margin + button_height
+    buttons.append(Button("Pressentimento", left_column_x, button_y, button_width, button_height, rosa_escuro, black, pressentimento))
+    buttons.append(Button("Party?", right_column_x, button_y, button_width, button_height, rosa_escuro, black, party))
+
     pygame.init() 
     gameDisplay = pygame.display.set_mode((display_width,display_height))
     pygame.display.set_caption('A Terça Casa') 
