@@ -24,8 +24,9 @@ green = (0,200,0)
 bright_red = (255,0,0)
 bright_green = (0,255,0) 
 
-light_ip = "192.168.1.4" #prod
-#light_ip = "192.168.1.89" #dev
+light_ip = "192.168.1.89" #dev
+light_ip = "192.168.1.182" #dev2
+light_ip = "192.168.1.9" #prod
 
 lampada_a_piscar = False
 
@@ -110,6 +111,19 @@ async def acender_lampada_main():
     print("acende")
     await light.turn_on(PilotBuilder(rgb = (255, 255, 255), brightness = 255))
 
+def acender_lampada_fade_in():
+    parar_terramoto()
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(acender_lampada_fade_in_main())
+
+async def acender_lampada_fade_in_main():
+    global light
+    print("acende")
+    brightness = 0
+    while brightness <= 255:
+        await light.turn_on(PilotBuilder(rgb = (255, 255, 255), brightness = brightness))
+        brightness += 1
+
 def acender_lampada():
     if lampada_a_piscar:
         parar_terramoto()
@@ -130,16 +144,20 @@ def apagar_lampada():
 def parar_lampada_a_piscar():
     global lampada_process
     global lampada_a_piscar
-    if lampada_a_piscar and lampada_process and lampada_process.is_alive():
+    if lampada_process and lampada_process.is_alive():
         lampada_process.terminate()
         lampada_a_piscar = False
 
 async def piscar_lampada_main():
     global light
     await light.turn_off()
-    await asyncio.sleep(random.randint(1, 6) * 0.01)
+    await asyncio.sleep(random.randint(3, 10) * 0.01)
     await light.turn_on(PilotBuilder(brightness = 100))
-    await asyncio.sleep(random.randint(1, 8) * 0.01) 
+    await asyncio.sleep(random.randint(1, 4) * 0.01)
+    await light.turn_off()
+    await asyncio.sleep(random.randint(1, 4) * 0.01) 
+    await light.turn_on(PilotBuilder(brightness = 100))
+    await asyncio.sleep(random.randint(1, 4) * 0.01) 
 
 def piscar_lampada(n_flickers=10):
     loop = asyncio.get_event_loop()
@@ -160,14 +178,23 @@ def parar_terramoto():
     # fadeout time is in milliseconds
     pygame.mixer.music.fadeout(3000)
     parar_lampada_a_piscar()
+    acender_lampada()
 
 def poder():
-    call_piscar_lampada_with_subprocess(n_flickers=8)
+    call_piscar_lampada_with_subprocess(n_flickers=3)
 
 def terramoto():
-    pygame.mixer.music.load('audio/earthquake.mp3')
+    pygame.mixer.music.load('audio/earthquake_big.wav')
     pygame.mixer.music.play(-1)
     call_piscar_lampada_with_subprocess(n_flickers=300)
+
+def mutantes():
+    pygame.mixer.music.load('audio/mutantes.mp3')
+    pygame.mixer.music.play(-1)
+
+def esfrega():
+    pygame.mixer.music.load('audio/esfrega.mp3')
+    pygame.mixer.music.play(-1)
 
 def explosao():
     explosao = pygame.mixer.Sound('audio/explosion.mp3')   
@@ -182,6 +209,16 @@ def pressentimento():
         parar_terramoto()
     loop = asyncio.get_event_loop()
     loop.run_until_complete(pressentimento_main())
+
+async def tensao_main():
+    global light
+    await light.turn_on(PilotBuilder(rgb = (255, 50, 0), brightness = 255))
+
+def tensao():
+    if lampada_a_piscar:
+        parar_terramoto()
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(tensao_main())
 
 async def party_main():
     global light
@@ -198,20 +235,26 @@ if __name__ == "__main__":
     button_width = display_width // 4
     button_y = display_height // 5 * 2
     button_margin = button_height // 3 * 2
-    left_column_x = display_width // 2 - button_width - button_margin
-    right_column_x = display_width // 2 + button_margin
+    left_column_x = display_width // 2 - button_width - button_margin - (button_width // 2)
+    middle_column_x = display_width // 2 - (button_width // 2)
+    right_column_x = display_width // 2 + button_margin + (button_width // 2)
     print(left_column_x, button_y)
     buttons.append(Button("PODER!", left_column_x, button_y, button_width, button_height, rosa_escuro, black, poder))   
+    buttons.append(Button("Mutantes", middle_column_x, button_y, button_width, button_height, rosa_escuro, black, mutantes))
     buttons.append(Button("TERRAMOTO!!!", right_column_x, button_y, button_width, button_height, rosa_escuro, black, terramoto))
     button_y += button_margin + button_height
     buttons.append(Button("Acender lâmpada", left_column_x, button_y, button_width, button_height, rosa_escuro, black, acender_lampada))
+    buttons.append(Button("Te(n)são", middle_column_x, button_y, button_width, button_height, rosa_escuro, black, tensao))
     buttons.append(Button("Explosão", right_column_x, button_y, button_width, button_height, rosa_escuro, black, explosao))
     button_y += button_margin + button_height
     buttons.append(Button("Apagar lâmpada", left_column_x, button_y, button_width, button_height, rosa_escuro, black, apagar_lampada))
+    buttons.append(Button("Esfrega esfrega", middle_column_x, button_y, button_width, button_height, rosa_escuro, black, esfrega))
     buttons.append(Button("Parar terramoto", right_column_x, button_y, button_width, button_height, rosa_escuro, black, parar_terramoto))
     button_y += button_margin + button_height
     buttons.append(Button("Pressentimento", left_column_x, button_y, button_width, button_height, rosa_escuro, black, pressentimento))
+    buttons.append(Button("Luz com bue fade in", middle_column_x, button_y, button_width, button_height, rosa_escuro, black, acender_lampada_fade_in))
     buttons.append(Button("Party?", right_column_x, button_y, button_width, button_height, rosa_escuro, black, party))
+    button_y += button_margin + button_height
 
     pygame.init() 
     gameDisplay = pygame.display.set_mode((display_width,display_height))
