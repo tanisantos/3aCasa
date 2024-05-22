@@ -25,8 +25,8 @@ green = (0,200,0)
 bright_red = (255,0,0)
 bright_green = (0,255,0) 
 
-light = None 
-light_ip = None
+light_ip = "192.168.1.9"
+light = wizlight(light_ip) 
 lampada_process = None
 
 buttons = []
@@ -114,23 +114,23 @@ async def acender_lampada_main():
     print("acende")
     await light.turn_on(PilotBuilder(rgb = (255, 255, 255), brightness = 255))
 
-async def acender_lampada_fade_in_main():
-    global light
+async def acender_lampada_fade_in_main(light):
     print("acende")
     brightness = 0
     while brightness <= 255:
         await light.turn_on(PilotBuilder(rgb = (255, 255, 255), brightness = brightness))
         brightness += 1
 
-def acender_lampada_fade_in():
+def acender_lampada_fade_in(light):
     parar_lampada()
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(acender_lampada_fade_in_main())
+    loop.run_until_complete(acender_lampada_fade_in_main(light))
 
-def call_acender_lampada_fade_in_with_subprocess(n_flickers=10):
+def call_acender_lampada_fade_in_with_subprocess():
     parar_lampada()
     global lampada_process
-    lampada_process = Process(target=acender_lampada_fade_in)
+    global light
+    lampada_process = Process(target=acender_lampada_fade_in, args=[light])
     lampada_process.start()
 
 def acender_lampada():
@@ -153,8 +153,7 @@ def parar_lampada():
     if lampada_process and lampada_process.is_alive():
         lampada_process.terminate()
 
-async def piscar_lampada_main():
-    global light
+async def piscar_lampada_main(light):
     await light.turn_off()
     await asyncio.sleep(random.randint(3, 10) * 0.01)
     await light.turn_on(PilotBuilder(brightness = 100))
@@ -164,17 +163,18 @@ async def piscar_lampada_main():
     await light.turn_on(PilotBuilder(brightness = 100))
     await asyncio.sleep(random.randint(1, 4) * 0.01) 
 
-def piscar_lampada(n_flickers=10):
+def piscar_lampada(light, n_flickers=10):
     loop = asyncio.get_event_loop()
     for i in range(n_flickers):
         print(i)
-        loop.run_until_complete(piscar_lampada_main())
+        loop.run_until_complete(piscar_lampada_main(light))
     
 
 def call_piscar_lampada_with_subprocess(n_flickers=10):
     parar_lampada()
     global lampada_process
-    lampada_process = Process(target=piscar_lampada, args=[n_flickers])
+    global light
+    lampada_process = Process(target=piscar_lampada, args=[light, n_flickers])
     lampada_process.start()
 
 
@@ -252,9 +252,10 @@ def discover_bulbs():
 
 if __name__ == "__main__":
 
-    """ discover lights """
-    discover_bulbs()
-    light = wizlight(light_ip)
+    # """ discover lights """
+    # discover_bulbs()
+    # print(light_ip)
+    # # light = wizlight(light_ip)
 
     """ page layout settings """
     n_columns = 3
