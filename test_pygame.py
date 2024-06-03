@@ -7,11 +7,10 @@ import random
 import sys
 from multiprocessing import Process
 import pyautogui
-
 from pywizlight import wizlight, PilotBuilder, discovery
  
-display_width = pyautogui.size().width
-display_height = pyautogui.size().height * 0.9
+display_width = int(pyautogui.size().width * 0.7)
+display_height = int(pyautogui.size().height * 0.7)
  
 black = (0,0,0)
 white = (255,255,255)
@@ -25,8 +24,13 @@ green = (0,200,0)
 bright_red = (255,0,0)
 bright_green = (0,255,0) 
 
-light_ip = "192.168.1.9"
-light = wizlight(light_ip) 
+light_ip = "192.168.1.89" #dev
+light_ip = "192.168.1.182" #dev2
+light_ip = "192.168.1.4" #prod
+
+lampada_busy = False
+
+light = wizlight(light_ip)
 lampada_process = None
 
 buttons = []
@@ -55,6 +59,7 @@ class Button:
         self.action = action
         self.was_clicked = False
 
+
     def is_hovered(self):
         mouse = pygame.mouse.get_pos()
         return self.x+self.w > mouse[0] > self.x and self.y+self.h > mouse[1] > self.y
@@ -76,9 +81,9 @@ class Button:
             
         else:
             pygame.draw.rect(gameDisplay, self.ic,(self.x, self.y, self.w, self.h))
-        text_size = display_width // 50
-        # smallText = pygame.font.SysFont("lucidafax", text_size)
+        text_size = display_width // 33
         smallText = pygame.font.Font("Segoe UI Symbol.ttf", text_size)
+        # smallText = pygame.font.SysFont("lucidafax", text_size)        
         textSurf, textRect = text_objects(self.msg, smallText, self.text_color)
         textRect.center = ( (self.x+(self.w/2)), (self.y+(self.h/2)) )
         gameDisplay.blit(textSurf, textRect)        
@@ -98,7 +103,7 @@ def game_intro():
                 quit()
                 
         gameDisplay.fill(rosa_claro)
-        largetext_size = display_width // 10
+        largetext_size = display_width // 8
         largeText = pygame.font.SysFont("portugalbolditalic", largetext_size)
         TextSurf, TextRect = text_objects("A Terça Casa", largeText, rosa_escuro)
         TextRect.center = ((display_width/2), (display_height/2) - display_width // 6)
@@ -114,27 +119,23 @@ async def acender_lampada_main():
     print("acende")
     await light.turn_on(PilotBuilder(rgb = (255, 255, 255), brightness = 255))
 
-async def acender_lampada_fade_in_main(light):
+async def acender_lampada_fade_in_main():
+    global light
     print("acende")
     brightness = 0
     while brightness <= 255:
         await light.turn_on(PilotBuilder(rgb = (255, 255, 255), brightness = brightness))
         brightness += 1
 
-def acender_lampada_fade_in(light):
-    parar_lampada()
+def acender_lampada_fade_in():
+    if lampada_busy:
+        parar_terramoto()
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(acender_lampada_fade_in_main(light))
-
-def call_acender_lampada_fade_in_with_subprocess():
-    parar_lampada()
-    global lampada_process
-    global light
-    lampada_process = Process(target=acender_lampada_fade_in, args=[light])
-    lampada_process.start()
+    loop.run_until_complete(acender_lampada_fade_in_main())
 
 def acender_lampada():
-    parar_lampada()
+    if lampada_busy:
+        parar_terramoto()
     loop = asyncio.get_event_loop()
     loop.run_until_complete(acender_lampada_main())
 
@@ -144,16 +145,20 @@ async def apagar_lampada_main():
     await light.turn_off()
 
 def apagar_lampada():
-    parar_lampada()
+    if lampada_busy:
+        parar_terramoto()
     loop = asyncio.get_event_loop()
     loop.run_until_complete(apagar_lampada_main())
 
-def parar_lampada():
+def parar_lampada_process():
     global lampada_process
+    global lampada_busy
     if lampada_process and lampada_process.is_alive():
         lampada_process.terminate()
+        lampada_busy = False
 
-async def piscar_lampada_main(light):
+async def piscar_lampada_main():
+    global light
     await light.turn_off()
     await asyncio.sleep(random.randint(3, 10) * 0.01)
     await light.turn_on(PilotBuilder(brightness = 100))
@@ -163,25 +168,34 @@ async def piscar_lampada_main(light):
     await light.turn_on(PilotBuilder(brightness = 100))
     await asyncio.sleep(random.randint(1, 4) * 0.01) 
 
-def piscar_lampada(light, n_flickers=10):
+def piscar_lampada(n_flickers=10):
     loop = asyncio.get_event_loop()
     for i in range(n_flickers):
         print(i)
-        loop.run_until_complete(piscar_lampada_main(light))
-    
+        loop.run_until_complete(piscar_lampada_main())
 
 def call_piscar_lampada_with_subprocess(n_flickers=10):
-    parar_lampada()
+    global lampada_busy
     global lampada_process
-    global light
-    lampada_process = Process(target=piscar_lampada, args=[light, n_flickers])
+    if lampada_busy:
+        parar_lampada_process()
+    lampada_busy = True
+    lampada_process = Process(target=piscar_lampada, args=[n_flickers])
     lampada_process.start()
 
+def call_acender_lampada_fade_in_with_subprocess():
+    global lampada_busy
+    global lampada_process
+    if lampada_busy:
+        parar_lampada_process()
+    lampada_busy = True
+    lampada_process = Process(target=acender_lampada_fade_in)
+    lampada_process.start() 
 
 def parar_terramoto():
     # fadeout time is in milliseconds
     pygame.mixer.music.fadeout(3000)
-    parar_lampada()
+    parar_lampada_process()
     acender_lampada()
 
 def poder():
@@ -209,7 +223,8 @@ async def pressentimento_main():
     await light.turn_on(PilotBuilder(brightness = 100))
 
 def pressentimento():
-    parar_lampada()
+    if lampada_busy:
+        parar_terramoto()
     loop = asyncio.get_event_loop()
     loop.run_until_complete(pressentimento_main())
 
@@ -218,7 +233,8 @@ async def tensao_main():
     await light.turn_on(PilotBuilder(rgb = (255, 50, 0), brightness = 255))
 
 def tensao():
-    parar_lampada()
+    if lampada_busy:
+        parar_terramoto()
     loop = asyncio.get_event_loop()
     loop.run_until_complete(tensao_main())
 
@@ -227,7 +243,8 @@ async def party_main():
     await light.turn_on(PilotBuilder(scene = 4))
 
 def party():
-    parar_lampada()
+    if lampada_busy:
+        parar_terramoto()
     loop = asyncio.get_event_loop()
     loop.run_until_complete(party_main())
 
@@ -237,22 +254,9 @@ def sound_stop():
 def sound_fade_out():
     pygame.mixer.music.fadeout(3000)
 
-async def discover_bulbs_main():
-    global light_ip
-    try:
-        bulbs = await discovery.discover_lights(broadcast_space="192.168.1.255")
-        light_ip = bulbs[0].ip
-    except Exception as e:
-        print(e)
-        light_ip = "192.168.1.9"
-
-def discover_bulbs():
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(discover_bulbs_main())
 
 if __name__ == "__main__":
-
-    # """ discover lights """
+     # """ discover lights """
     # discover_bulbs()
     # print(light_ip)
     # # light = wizlight(light_ip)
@@ -312,7 +316,7 @@ if __name__ == "__main__":
     buttons.append(Button("Explosão", **col_kwargs, action=explosao)) # pode-se remover?
     buttons.append(Button("Parar terramoto", **col_kwargs, action=parar_terramoto))
 
-    """"""    
+    """"""
     pygame.init() 
     gameDisplay = pygame.display.set_mode((display_width,display_height))
     pygame.display.set_caption('A Terça Casa') 
