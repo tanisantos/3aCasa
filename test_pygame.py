@@ -24,14 +24,19 @@ green = (0,200,0)
 bright_red = (255,0,0)
 bright_green = (0,255,0) 
 
-light_ip = "192.168.1.89" #dev
-light_ip = "192.168.1.182" #dev2
-light_ip = "192.168.1.4" #prod
+light_ips = {
+             "Lustre" : "192.168.1.89",
+             "Luz3"   : "192.168.1.182",
+             "Cozinha": "192.168.1.172",
+             }
 
-lampada_busy = False
+cold_rgb = (175, 255, 255)
+warm_rgb = (255, 255, 255)
+dim_rgb  = (255, 75, 75)
 
-light = wizlight(light_ip)
-lampada_process = None
+lights = {key: wizlight(value) for key, value in light_ips.items()}
+
+lampadas_processes = {key: None for key, _ in light_ips.items()}
 
 buttons = []
 
@@ -43,7 +48,7 @@ def text_objects(text, font, color=white):
 
 class Button:
     button_count_per_column = {}
-    def __init__(self, msg, w, h, x, column_name, buttons_y_start, height_step, ic, ac, text_color, action):
+    def __init__(self, msg, w, h, x, column_name, buttons_y_start, height_step, ic, ac, text_color, action, args=[]):
         if isinstance(Button.button_count_per_column.get(column_name, None), int):
             Button.button_count_per_column[column_name] += 1
         else:
@@ -57,6 +62,7 @@ class Button:
         self.ac = ac
         self.text_color = text_color
         self.action = action
+        self.args = args
         self.was_clicked = False
 
 
@@ -75,15 +81,14 @@ class Button:
             if self.is_clicked():
                 if not self.was_clicked:
                     self.was_clicked = True
-                    self.action()
+                    self.action(*self.args)
             else:
                 self.was_clicked = False
             
         else:
             pygame.draw.rect(gameDisplay, self.ic,(self.x, self.y, self.w, self.h))
-        text_size = display_width // 33
+        text_size = display_width // 40
         smallText = pygame.font.Font("Segoe UI Symbol.ttf", text_size)
-        # smallText = pygame.font.SysFont("lucidafax", text_size)        
         textSurf, textRect = text_objects(self.msg, smallText, self.text_color)
         textRect.center = ( (self.x+(self.w/2)), (self.y+(self.h/2)) )
         gameDisplay.blit(textSurf, textRect)        
@@ -114,155 +119,90 @@ def game_intro():
 
         pygame.display.update()
 
-async def acender_lampada_main():
-    global light
+async def acender_lampada_main(lampada, rgb):
+    global lights
+    light = lights[lampada]
     print("acende")
-    await light.turn_on(PilotBuilder(rgb = (255, 255, 255), brightness = 255))
+    await light.turn_on(PilotBuilder(rgb = rgb, brightness = 255))
 
-async def acender_lampada_fade_in_main():
-    global light
-    print("acende")
-    brightness = 0
-    while brightness <= 255:
-        await light.turn_on(PilotBuilder(rgb = (255, 255, 255), brightness = brightness))
-        brightness += 1
+def acender_lampadas(lampadas, rgb):
+    parar_lampada_process(lampadas)
+    for lampada in lampadas:
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(acender_lampada_main(lampada, rgb))
 
-def acender_lampada_fade_in():
-    if lampada_busy:
-        parar_terramoto()
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(acender_lampada_fade_in_main())
-
-def acender_lampada():
-    if lampada_busy:
-        parar_terramoto()
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(acender_lampada_main())
-
-async def apagar_lampada_main():
-    global light
+async def apagar_lampada_main(lampada):
+    global lights
+    light = lights[lampada]
     print("apaga")
     await light.turn_off()
 
-def apagar_lampada():
-    if lampada_busy:
-        parar_terramoto()
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(apagar_lampada_main())
+def apagar_lampada(lampadas):
+    parar_lampada_process(lampadas)
+    for lampada in lampadas:
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(apagar_lampada_main(lampada))
 
-def parar_lampada_process():
-    global lampada_process
-    global lampada_busy
-    if lampada_process and lampada_process.is_alive():
-        lampada_process.terminate()
-        lampada_busy = False
+def parar_lampada_process(lampadas):
+    global lampadas_processes
+    for lampada in lampadas:
+        print("!!!!!!!!!!!!!!! parar lampada sub", lampada)
+        lampada_process = lampadas_processes[lampada]
+        if lampada_process and lampada_process.is_alive():
+            lampadas_processes[lampada].terminate()
 
-async def piscar_lampada_main():
-    global light
+async def piscar_lampada_main(lampada, rgb):
+    global lights
+    light = lights[lampada]
     await light.turn_off()
     await asyncio.sleep(random.randint(3, 10) * 0.01)
-    await light.turn_on(PilotBuilder(brightness = 100))
+    await light.turn_on(PilotBuilder(rgb = rgb, brightness = 255))
     await asyncio.sleep(random.randint(1, 4) * 0.01)
     await light.turn_off()
     await asyncio.sleep(random.randint(1, 4) * 0.01) 
-    await light.turn_on(PilotBuilder(brightness = 100))
+    await light.turn_on(PilotBuilder(rgb = rgb, brightness = 100))
     await asyncio.sleep(random.randint(1, 4) * 0.01) 
 
-def piscar_lampada(n_flickers=10):
+def piscar_lampada(lampada, rgb, n_flickers=10):
     loop = asyncio.get_event_loop()
     for i in range(n_flickers):
         print(i)
-        loop.run_until_complete(piscar_lampada_main())
+        loop.run_until_complete(piscar_lampada_main(lampada, rgb))
 
-def call_piscar_lampada_with_subprocess(n_flickers=10):
-    global lampada_busy
-    global lampada_process
-    if lampada_busy:
-        parar_lampada_process()
-    lampada_busy = True
-    lampada_process = Process(target=piscar_lampada, args=[n_flickers])
-    lampada_process.start()
+def call_piscar_lampada_with_subprocess(lampadas, rgb, n_flickers=10):
+    global lampadas_processes
+    parar_lampada_process(lampadas)
+    print("parar lampada process")
+    for lampada in lampadas:
+        print("!!!!! piscando:", lampada)
+        lampadas_processes[lampada] = Process(target=piscar_lampada, args=[lampada, rgb, n_flickers])
+        lampadas_processes[lampada].start()
 
-def call_acender_lampada_fade_in_with_subprocess():
-    global lampada_busy
-    global lampada_process
-    if lampada_busy:
-        parar_lampada_process()
-    lampada_busy = True
-    lampada_process = Process(target=acender_lampada_fade_in)
-    lampada_process.start() 
+def parar_terramoto(lampadas, rgb):
+    print("parar terramoto", lampadas)
+    parar_lampada_process(lampadas)
+    acender_lampadas(lampadas, rgb)
 
-def parar_terramoto():
-    # fadeout time is in milliseconds
-    pygame.mixer.music.fadeout(3000)
-    parar_lampada_process()
-    acender_lampada()
+def poder(lampadas, rgb):
+    call_piscar_lampada_with_subprocess(lampadas, rgb, n_flickers=3)
 
-def poder():
-    call_piscar_lampada_with_subprocess(n_flickers=3)
-
-def terramoto():
-    pygame.mixer.music.load('audio/earthquake_big.wav')
-    pygame.mixer.music.play(-1)
-    call_piscar_lampada_with_subprocess(n_flickers=300)
-
-def mutantes():
-    pygame.mixer.music.load('audio/mutantes.mp3')
-    pygame.mixer.music.play(-1)
-
-def esfrega():
-    pygame.mixer.music.load('audio/esfrega.mp3')
-    pygame.mixer.music.play(-1)
-
-def explosao():
-    explosao = pygame.mixer.Sound('audio/explosion.mp3')   
-    explosao.play() 
-
-async def pressentimento_main():
-    global light
+async def pressentimento_main(lampada):
+    global lights
+    light = lights[lampada]
     await light.turn_on(PilotBuilder(brightness = 100))
 
-def pressentimento():
-    if lampada_busy:
-        parar_terramoto()
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(pressentimento_main())
-
-async def tensao_main():
-    global light
+async def tensao_main(lampada):
+    global lights
+    light = lights[lampada]
     await light.turn_on(PilotBuilder(rgb = (255, 50, 0), brightness = 255))
 
-def tensao():
-    if lampada_busy:
-        parar_terramoto()
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(tensao_main())
-
-async def party_main():
-    global light
-    await light.turn_on(PilotBuilder(scene = 4))
-
-def party():
-    if lampada_busy:
-        parar_terramoto()
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(party_main())
-
-def sound_stop():
-    pygame.mixer.music.stop()
-
-def sound_fade_out():
-    pygame.mixer.music.fadeout(3000)
-
+def terramoto(lampadas, rgb):
+    call_piscar_lampada_with_subprocess(lampadas, rgb, n_flickers=400)
 
 if __name__ == "__main__":
-     # """ discover lights """
-    # discover_bulbs()
-    # print(light_ip)
-    # # light = wizlight(light_ip)
 
     """ page layout settings """
-    n_columns = 3
+    n_columns = 4
     page_horizontal_margin = display_width // 10
     page_vertical_margin = display_height // 10
 
@@ -270,51 +210,51 @@ if __name__ == "__main__":
     button_height = display_height // 13
     button_margin = button_height // 3 * 2
     button_panel_width = display_width - (page_horizontal_margin * 2)
-    basic_controls_width = button_height * 2
-    button_width = (button_panel_width - (n_columns * button_margin) - basic_controls_width) // n_columns
+    # basic_controls_width = button_height * 2
+    button_width = (button_panel_width - (n_columns * button_margin)) // n_columns
     height_step = button_height + button_margin
 
-    """ basic controls """
-    column_id = "controls"
+    light_names = light_ips.keys()
+
+    """ Setup """
+    column_id = "setup"
     x_coord = page_horizontal_margin
-    col_kwargs = {"w":basic_controls_width, "h": button_height, "x": x_coord, "column_name": column_id, 
+    Button.button_count_per_column[column_id] = 0
+    col_kwargs = {"w":button_width, "h": button_height, "x": x_coord, "column_name": column_id, 
+                  "buttons_y_start": buttons_y_start, "height_step": height_step, "ic": rosa_escuro, "ac": black, "text_color": white}
+    buttons.append(Button("Luz1 (Lustre)", **col_kwargs, action=poder, args=[['Lustre'], warm_rgb]))
+    buttons.append(Button("Luz2 (Cozinha)", **col_kwargs, action=poder, args=[['Cozinha'], warm_rgb]))
+    buttons.append(Button("Luz3 (Esquerda)", **col_kwargs, action=poder, args=[['Luz3'], cold_rgb]))
+
+    """ Essentials """
+    column_id = "controls"
+    x_coord += button_margin + button_width
+    col_kwargs = {"w":button_width, "h": button_height, "x": x_coord, "column_name": column_id, 
                   "buttons_y_start": buttons_y_start, "height_step": height_step, "ic": white, "ac": black, "text_color": rosa_escuro}
-    buttons.append(Button("🔊⏹", **col_kwargs, action=sound_stop))
-    buttons.append(Button("🔊▼", **col_kwargs, action=sound_fade_out))
-    buttons.append(Button("💡✅", **col_kwargs, action=acender_lampada))
-    buttons.append(Button("💡❌", **col_kwargs, action=apagar_lampada))
-    # buttons.append(Button("⏹", **col_kwargs, action=parar_terramoto))
+    buttons.append(Button("💡💡💡✅", **col_kwargs, action=acender_lampadas, args=[light_names, warm_rgb]))
+    buttons.append(Button("💡💡💡❌", **col_kwargs, action=apagar_lampada, args=[light_names]))
+    buttons.append(Button("PODER!", **col_kwargs, action=poder, args=[["Lustre", "Luz3"], warm_rgb]))
+    buttons.append(Button("TERRAMOTO!!!", **col_kwargs, action=terramoto, args=[["Cozinha", "Luz3"], warm_rgb]))
+    buttons.append(Button("Terramoto ❌", **col_kwargs, action=parar_terramoto, args=[["Cozinha", "Luz3"], cold_rgb]))
 
-    """ action buttons """
-    column_id = "musica"
-    x_coord += button_margin + basic_controls_width
-    col_kwargs = {"w":button_width, "h": button_height, "x": x_coord, "column_name": column_id, 
-                  "buttons_y_start": buttons_y_start, "height_step": height_step, "ic": rosa_escuro, "ac": black, "text_color": white}
-    buttons.append(Button("Mutantes", **col_kwargs, action=mutantes))
-    buttons.append(Button("Musica1", **col_kwargs, action=mutantes))
-    buttons.append(Button("Musica2", **col_kwargs, action=mutantes))
-    buttons.append(Button("Musica3", **col_kwargs, action=mutantes))
-    buttons.append(Button("Esfrega esfrega", **col_kwargs, action=esfrega))
-
-    """"""
-    column_id = "luzes"
+    """ Cenas """
+    column_id = "Cozinha"
+    Button.button_count_per_column[column_id] = 0
     x_coord += button_margin + button_width
     col_kwargs = {"w":button_width, "h": button_height, "x": x_coord, "column_name": column_id, 
                   "buttons_y_start": buttons_y_start, "height_step": height_step, "ic": rosa_escuro, "ac": black, "text_color": white}
-    buttons.append(Button("Luz tensão", **col_kwargs, action=tensao))
-    buttons.append(Button("Luz fade in", **col_kwargs, action=call_acender_lampada_fade_in_with_subprocess))
-    buttons.append(Button("Luz fraca", **col_kwargs, action=pressentimento))
-    buttons.append(Button("Party?", **col_kwargs, action=party))
-    
-    """"""
-    column_id = "outros"
+    buttons.append(Button("Cozinha ✅", **col_kwargs, action=acender_lampadas, args=[['Cozinha', 'Luz3'], cold_rgb]))
+    buttons.append(Button("Cozinha ❌", **col_kwargs, action=apagar_lampada, args=[['Cozinha', 'Luz3']]))
+    buttons.append(Button("Cozinha dim", **col_kwargs, action=acender_lampadas, args=[['Cozinha', 'Luz3'], dim_rgb]))
+
+    column_id = "Sala"
+    Button.button_count_per_column[column_id] = 0
     x_coord += button_margin + button_width
     col_kwargs = {"w":button_width, "h": button_height, "x": x_coord, "column_name": column_id, 
                   "buttons_y_start": buttons_y_start, "height_step": height_step, "ic": rosa_escuro, "ac": black, "text_color": white}
-    buttons.append(Button("PODER!", **col_kwargs, action=poder))
-    buttons.append(Button("TERRAMOTO!!!", **col_kwargs, action=terramoto))
-    buttons.append(Button("Explosão", **col_kwargs, action=explosao)) # pode-se remover?
-    buttons.append(Button("Parar terramoto", **col_kwargs, action=parar_terramoto))
+    buttons.append(Button("Sala ✅", **col_kwargs, action=acender_lampadas, args=[['Lustre', 'Luz3'], warm_rgb]))
+    buttons.append(Button("Sala ❌", **col_kwargs, action=apagar_lampada, args=[['Lustre', 'Luz3']]))
+    buttons.append(Button("Sala dim", **col_kwargs, action=acender_lampadas, args=[['Lustre', 'Luz3'], dim_rgb]))
 
     """"""
     pygame.init() 
