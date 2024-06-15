@@ -25,14 +25,16 @@ bright_red = (255,0,0)
 bright_green = (0,255,0) 
 
 light_ips = {
-             "Lustre" : "192.168.1.89",
-             "Luz3"   : "192.168.1.182",
-             "Cozinha": "192.168.1.172",
+             "Lustre" : "192.168.1.246",
+             "Luz3"   : "192.168.1.244",
+             "Cozinha": "192.168.1.247",
              }
 
 cold_rgb = (175, 255, 255)
 warm_rgb = (255, 255, 255)
 dim_rgb  = (255, 75, 75)
+blue_rgb  = (0, 0, 255)
+red_rgb  = (255, 100, 100)
 
 lights = {key: wizlight(value) for key, value in light_ips.items()}
 
@@ -123,7 +125,13 @@ async def acender_lampada_main(lampada, rgb):
     global lights
     light = lights[lampada]
     print("acende")
-    await light.turn_on(PilotBuilder(rgb = rgb, brightness = 255))
+    
+    if lampada == 'Luz3' and (rgb == cold_rgb or rgb == blue_rgb):
+        await light.turn_on(PilotBuilder(cold_white=100, brightness = 255))
+    elif lampada == 'Luz3' and rgb == dim_rgb:
+        await light.turn_on(PilotBuilder(warm_white=100, brightness = 255))
+    else:
+        await light.turn_on(PilotBuilder(rgb = rgb, brightness = 255))
 
 def acender_lampadas(lampadas, rgb):
     parar_lampada_process(lampadas)
@@ -153,14 +161,20 @@ def parar_lampada_process(lampadas):
 
 async def piscar_lampada_main(lampada, rgb):
     global lights
+    print("1111")
     light = lights[lampada]
     await light.turn_off()
     await asyncio.sleep(random.randint(3, 10) * 0.01)
-    await light.turn_on(PilotBuilder(rgb = rgb, brightness = 255))
+    if lampada == 'Luz3' and (rgb == cold_rgb or rgb == blue_rgb):
+        await light.turn_on(PilotBuilder(cold_white=100, brightness = 255))
+    elif lampada == 'Luz3' and rgb == dim_rgb:
+        await light.turn_on(PilotBuilder(warm_white=100, brightness = 255))
+    else:
+        await light.turn_on(PilotBuilder(rgb = rgb, brightness = 255))
     await asyncio.sleep(random.randint(1, 4) * 0.01)
     await light.turn_off()
     await asyncio.sleep(random.randint(1, 4) * 0.01) 
-    await light.turn_on(PilotBuilder(rgb = rgb, brightness = 100))
+    await light.turn_on(PilotBuilder(rgb = rgb, brightness = 255))
     await asyncio.sleep(random.randint(1, 4) * 0.01) 
 
 def piscar_lampada(lampada, rgb, n_flickers=10):
@@ -185,6 +199,7 @@ def parar_terramoto(lampadas, rgb):
 
 def poder(lampadas, rgb):
     call_piscar_lampada_with_subprocess(lampadas, rgb, n_flickers=3)
+    acender_lampadas(lampadas)
 
 async def pressentimento_main(lampada):
     global lights
@@ -224,7 +239,7 @@ if __name__ == "__main__":
                   "buttons_y_start": buttons_y_start, "height_step": height_step, "ic": rosa_escuro, "ac": black, "text_color": white}
     buttons.append(Button("Luz1 (Lustre)", **col_kwargs, action=poder, args=[['Lustre'], warm_rgb]))
     buttons.append(Button("Luz2 (Cozinha)", **col_kwargs, action=poder, args=[['Cozinha'], warm_rgb]))
-    buttons.append(Button("Luz3 (Esquerda)", **col_kwargs, action=poder, args=[['Luz3'], cold_rgb]))
+    buttons.append(Button("Luz3", **col_kwargs, action=poder, args=[['Luz3'], cold_rgb]))
 
     """ Essentials """
     column_id = "controls"
@@ -234,27 +249,29 @@ if __name__ == "__main__":
     buttons.append(Button("💡💡💡✅", **col_kwargs, action=acender_lampadas, args=[light_names, warm_rgb]))
     buttons.append(Button("💡💡💡❌", **col_kwargs, action=apagar_lampada, args=[light_names]))
     buttons.append(Button("PODER!", **col_kwargs, action=poder, args=[["Lustre", "Luz3"], warm_rgb]))
-    buttons.append(Button("TERRAMOTO!!!", **col_kwargs, action=terramoto, args=[["Cozinha", "Luz3"], warm_rgb]))
-    buttons.append(Button("Terramoto ❌", **col_kwargs, action=parar_terramoto, args=[["Cozinha", "Luz3"], cold_rgb]))
+    buttons.append(Button("TERRAMOTO!!!", **col_kwargs, action=terramoto, args=[light_names, cold_rgb]))
+    buttons.append(Button("Terramoto ❌", **col_kwargs, action=parar_terramoto, args=[light_names, cold_rgb]))
 
     """ Cenas """
     column_id = "Cozinha"
-    Button.button_count_per_column[column_id] = 0
+    # Button.button_count_per_column[column_id] = 0
     x_coord += button_margin + button_width
     col_kwargs = {"w":button_width, "h": button_height, "x": x_coord, "column_name": column_id, 
                   "buttons_y_start": buttons_y_start, "height_step": height_step, "ic": rosa_escuro, "ac": black, "text_color": white}
-    buttons.append(Button("Cozinha ✅", **col_kwargs, action=acender_lampadas, args=[['Cozinha', 'Luz3'], cold_rgb]))
-    buttons.append(Button("Cozinha ❌", **col_kwargs, action=apagar_lampada, args=[['Cozinha', 'Luz3']]))
-    buttons.append(Button("Cozinha dim", **col_kwargs, action=acender_lampadas, args=[['Cozinha', 'Luz3'], dim_rgb]))
+    buttons.append(Button("Cozinha ✅", **col_kwargs, action=acender_lampadas, args=[light_names, cold_rgb]))
+    buttons.append(Button("Cozinha ❌", **col_kwargs, action=apagar_lampada, args=[light_names]))
+    buttons.append(Button("Cozinha dim", **col_kwargs, action=acender_lampadas, args=[light_names, dim_rgb]))
+    buttons.append(Button("Cozinha azul", **col_kwargs, action=acender_lampadas, args=[light_names, blue_rgb]))
 
     column_id = "Sala"
-    Button.button_count_per_column[column_id] = 0
+    # Button.button_count_per_column[column_id] = 0
     x_coord += button_margin + button_width
     col_kwargs = {"w":button_width, "h": button_height, "x": x_coord, "column_name": column_id, 
                   "buttons_y_start": buttons_y_start, "height_step": height_step, "ic": rosa_escuro, "ac": black, "text_color": white}
     buttons.append(Button("Sala ✅", **col_kwargs, action=acender_lampadas, args=[['Lustre', 'Luz3'], warm_rgb]))
     buttons.append(Button("Sala ❌", **col_kwargs, action=apagar_lampada, args=[['Lustre', 'Luz3']]))
     buttons.append(Button("Sala dim", **col_kwargs, action=acender_lampadas, args=[['Lustre', 'Luz3'], dim_rgb]))
+    buttons.append(Button("Sala red", **col_kwargs, action=acender_lampadas, args=[['Lustre', 'Luz3'], red_rgb]))
 
     """"""
     pygame.init() 
