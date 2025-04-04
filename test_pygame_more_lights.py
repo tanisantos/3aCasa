@@ -30,15 +30,19 @@ light_ips = {
              "Lustre"    : "192.168.1.145",
              "Luz3"      : "192.168.1.144",
              "Cozinha"   : "192.168.1.143",
+             "Sala 1"    : "192.168.1.148",
+             "Sala 2"    : "192.168.1.149",
             #  "Foco"      : "192.168.1.222",
              }
+
+light_names = light_ips.keys()
 
 cold_rgb = (175, 255, 255)
 warm_rgb = (255, 255, 255)
 dim_rgb  = (255, 75, 75)
 # blue_rgb  = (10, 10, 255)
 blue_rgb  = (0, 0, 255)
-red_rgb  = (255, 50, 50)
+red_rgb  = (255, 25, 25)
 
 lights = {key: wizlight(value) for key, value in light_ips.items()}
 
@@ -132,7 +136,9 @@ async def acender_lampada_main(lampada, rgb):
     
     if lampada == 'Luz3':
         if (rgb == cold_rgb or rgb == blue_rgb):
-            await light.turn_on(PilotBuilder(cold_white=100, brightness = 255))
+            # await light.turn_on(PilotBuilder(cold_white=100, brightness = 255))
+            print("KJyfkugkjhfg")
+            await light.turn_on(PilotBuilder(warm_white=100, cold_white=0, brightness = 255))
         elif rgb == dim_rgb or rgb == red_rgb:
             await light.turn_on(PilotBuilder(warm_white=100, brightness = 255))
         else:
@@ -149,6 +155,8 @@ def acender_lampada(lampada, rgb):
 
 def acender_lampadas(lampadas, rgb):
     parar_lampadas_processes(lampadas)
+    global light_names
+    apagar_lampadas([l for l in light_names if l not in lampadas])
     for lampada in lampadas:
         lampadas_processes[lampada] = Process(target=acender_lampada, args=[lampada, rgb])
         lampadas_processes[lampada].start()
@@ -189,7 +197,8 @@ async def piscar_lampada_main(lampada, rgb):
 
         if lampada == 'Luz3':
             if (rgb == cold_rgb or rgb == blue_rgb):
-                await light.turn_on(PilotBuilder(cold_white=100, brightness = 255))
+                # await light.turn_on(PilotBuilder(cold_white=100, brightness = 255))   
+                await light.turn_on(PilotBuilder(warm_white=100, brightness = 255))
             elif rgb == dim_rgb or rgb == red_rgb:
                 await light.turn_on(PilotBuilder(warm_white=100, brightness = 255))
             else:
@@ -203,7 +212,8 @@ async def piscar_lampada_main(lampada, rgb):
 
         if lampada == 'Luz3':
             if (rgb == cold_rgb or rgb == blue_rgb):
-                await light.turn_on(PilotBuilder(cold_white=100, brightness = 255))
+                # await light.turn_on(PilotBuilder(cold_white=100, brightness = 255))
+                await light.turn_on(PilotBuilder(warm_white=100, brightness = 255))
             elif rgb == dim_rgb or rgb == red_rgb:
                 await light.turn_on(PilotBuilder(warm_white=100, brightness = 255))
             else:
@@ -266,7 +276,7 @@ if __name__ == "__main__":
 
     """ page layout settings """
     n_columns = 4
-    page_horizontal_margin = display_width // 10
+    page_horizontal_margin = display_width // 8
     page_vertical_margin = display_height // 10
 
     buttons_y_start = display_height // 6 * 2
@@ -280,16 +290,30 @@ if __name__ == "__main__":
     height_step = button_height + button_margin
 
     light_names = light_ips.keys()
+    light_names_cozinha = ["Cozinha"]
+    light_names_sala = ["Lustre", "Luz3", "Sala 1", "Sala 2"]
+
+
+    """ light """
+    column_id = "xxx"
+    x_coord = page_horizontal_margin - button_margin - button_margin
+    # Button.button_count_per_column[column_id] = 0
+    col_kwargs = {"w": button_margin, "h": button_height, "x": x_coord, "column_name": column_id, 
+                  "buttons_y_start": buttons_y_start, "height_step": height_step, "ic": rosa_escuro, "ac": black, "text_color": white}
+    buttons.append(Button("✅", **col_kwargs, action=acender_lampadas, args=[['Lustre'], warm_rgb]))
+    # buttons.append(Button("Luz4 (Foco)", **col_kwargs, action=poder, args=[['Foco'], cold_rgb]))
 
     """ Setup """
     column_id = "setup"
     x_coord = page_horizontal_margin
-    Button.button_count_per_column[column_id] = 0
+    # Button.button_count_per_column[column_id] = 0
     col_kwargs = {"w": button_width, "h": button_height, "x": x_coord, "column_name": column_id, 
                   "buttons_y_start": buttons_y_start, "height_step": height_step, "ic": rosa_escuro, "ac": black, "text_color": white}
     buttons.append(Button("Luz1 (Lustre)", **col_kwargs, action=poder, args=[['Lustre'], warm_rgb]))
     buttons.append(Button("Luz2 (Cozinha)", **col_kwargs, action=poder, args=[['Cozinha'], warm_rgb]))
-    buttons.append(Button("Luz3", **col_kwargs, action=poder, args=[['Luz3'], cold_rgb]))
+    buttons.append(Button("Luz3 (Cand. Pé)", **col_kwargs, action=poder, args=[['Luz3'], cold_rgb]))
+    buttons.append(Button("Luz4 (Sala 1)", **col_kwargs, action=poder, args=[['Sala 1'], warm_rgb]))
+    buttons.append(Button("Luz5 (Sala 2)", **col_kwargs, action=poder, args=[['Sala 2'], warm_rgb]))
     # buttons.append(Button("Luz4 (Foco)", **col_kwargs, action=poder, args=[['Foco'], cold_rgb]))
 
     """ Essentials """
@@ -301,7 +325,7 @@ if __name__ == "__main__":
     buttons.append(Button("💡💡💡❌", **col_kwargs, action=apagar_lampadas, args=[light_names]))
     buttons.append(Button("PODER!", **col_kwargs, action=poder, args=[["Lustre", "Luz3"], warm_rgb]))
     buttons.append(Button("TERRAMOTO!!!", **col_kwargs, action=terramoto, args=[light_names, warm_rgb]))
-    buttons.append(Button("Terramoto ❌", **col_kwargs, action=parar_terramoto, args=[light_names, cold_rgb]))
+    buttons.append(Button("Terramoto ❌", **col_kwargs, action=parar_terramoto, args=[light_names, warm_rgb]))
 
     """ Cenas """
     column_id = "Cozinha"
@@ -309,20 +333,20 @@ if __name__ == "__main__":
     x_coord += button_margin + button_width
     col_kwargs = {"w":button_width, "h": button_height, "x": x_coord, "column_name": column_id, 
                   "buttons_y_start": buttons_y_start, "height_step": height_step, "ic": rosa_escuro, "ac": black, "text_color": white}
-    buttons.append(Button("Cozinha ✅", **col_kwargs, action=acender_lampadas, args=[light_names, cold_rgb]))
-    buttons.append(Button("Cozinha ❌", **col_kwargs, action=apagar_lampadas, args=[light_names]))
-    buttons.append(Button("Cozinha dim", **col_kwargs, action=acender_lampadas, args=[light_names, dim_rgb]))
-    buttons.append(Button("Cozinha azul", **col_kwargs, action=cozinha_azul, args=[]))
+    buttons.append(Button("Cozinha ✅", **col_kwargs, action=acender_lampadas, args=[light_names_cozinha, cold_rgb]))
+    buttons.append(Button("Cozinha ❌", **col_kwargs, action=apagar_lampadas, args=[light_names_cozinha]))
+    buttons.append(Button("Cozinha dim", **col_kwargs, action=acender_lampadas, args=[light_names_cozinha, dim_rgb]))
+    buttons.append(Button("Cozinha azul", **col_kwargs, action=acender_lampadas, args=[[*light_names_cozinha, 'Lustre', 'Luz3'], blue_rgb]))
 
     column_id = "Sala"
     # Button.button_count_per_column[column_id] = 0
     x_coord += button_margin + button_width
     col_kwargs = {"w":button_width, "h": button_height, "x": x_coord, "column_name": column_id, 
                   "buttons_y_start": buttons_y_start, "height_step": height_step, "ic": rosa_escuro, "ac": black, "text_color": white}
-    buttons.append(Button("Sala ✅", **col_kwargs, action=sala, args=[]))
-    buttons.append(Button("Sala ❌", **col_kwargs, action=apagar_lampadas, args=[['Lustre', 'Luz3']]))
-    buttons.append(Button("Sala dim", **col_kwargs, action=acender_lampadas, args=[['Lustre', 'Luz3'], dim_rgb]))
-    buttons.append(Button("Sala red", **col_kwargs, action=acender_lampadas, args=[['Lustre', 'Luz3'], red_rgb]))
+    buttons.append(Button("Sala ✅", **col_kwargs, action=acender_lampadas, args=[light_names_sala, warm_rgb]))
+    buttons.append(Button("Sala ❌", **col_kwargs, action=apagar_lampadas, args=[light_names_sala]))
+    buttons.append(Button("Sala dim", **col_kwargs, action=acender_lampadas, args=[light_names_sala, dim_rgb]))
+    buttons.append(Button("Sala red", **col_kwargs, action=acender_lampadas, args=[light_names_sala, red_rgb]))
 
     # column_id = "Dama das Neves"
     # # Button.button_count_per_column[column_id] = 0
